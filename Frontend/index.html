@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SIA — Student Insight Assistant</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+:root{ --glass:rgba(255,255,255,.08); --accent:#8b5cf6; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Inter, sans-serif;background:#000;color:#fff;display:flex;flex-direction:column;min-height:100vh;overflow:hidden}
+
+header{padding:16px 28px;display:flex;justify-content:space-between;align-items:center;
+border-bottom:1px solid var(--glass);background:#0a0a0a}
+.logo{letter-spacing:2px;font-weight:600}
+.status{font-size:.75rem;color:var(--accent);display:flex;gap:6px}
+.status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+
+#chat{flex:1;overflow-y:auto;max-width:820px;margin:0 auto;padding:28px 16px;
+display:flex;flex-direction:column;gap:22px}
+
+.msg{opacity:0;transform:translateY(10px);animation:fade .35s forwards}
+@keyframes fade{to{opacity:1;transform:translateY(0)}}
+
+.sia{font-size:1.15rem;line-height:1.5}
+.user{align-self:flex-end;background:#101010;border:1px solid var(--glass);
+padding:10px 18px;border-radius:22px;color:#7dd3fc}
+
+.input-wrap{padding:22px;background:linear-gradient(0deg,#000 50%,transparent)}
+.input-box{max-width:820px;margin:0 auto;display:flex;align-items:center;
+border:1px solid var(--glass);border-radius:18px;background:#0f0f0f;
+padding:6px 6px 6px 16px;visibility:hidden}
+.input-box.active{visibility:visible}
+input{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:1rem}
+button{width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;cursor:pointer}
+
+footer{text-align:center;padding:10px;font-size:.7rem;color:#444;letter-spacing:1px}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">SIA PLATFORM</div>
+  <div style="display: flex; gap: 16px; align-items: center;">
+    <a href="dashboard.html" style="color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 500; border: 1px solid var(--glass); padding: 6px 14px; border-radius: 12px; transition: background 0.2s;">View Insights</a>
+    <div class="status">AI ACTIVE</div>
+  </div>
+</header>
+
+<div id="chat"></div>
+
+<div class="input-wrap">
+  <div class="input-box" id="box">
+    <input id="input" type="text" placeholder="Type your message..." />
+    <button id="send">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5">
+        <path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<footer>Powered by Student Analytics AI © 2025</footer>
+
+<script>
+// ===== CONFIG =====
+// WARNING: NEVER HARDCODE API KEYS IN A PRODUCTION ENVIRONMENT
+const GEMINI_KEY = "YOUR_GEMINI_API_KEY_HERE";
+const MODEL = "gemini-2.0-flash";
+
+// Supabase Edge Function (conversation logger + submissions)
+const SUPER_API =
+  "YOUR_SUPABASE_EDGE_FUNCTION_URL_HERE";
+
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const send  = document.getElementById("send");
+const box   = document.getElementById("box");
+
+// one session per conversation (all rows grouped under this id)
+let session = crypto.randomUUID();
+
+let fallback = false;
+let action = "";
+
+// ===== UI HELPERS =====
+function addUser(text){
+  const r=document.createElement("div");
+  r.className="msg user"; r.textContent=text;
+  chat.appendChild(r); chat.scrollTop=chat.scrollHeight;
+}
+
+async function addSia(text, step="reply"){
+  const r=document.createElement("div");
+  r.className="msg sia"; r.textContent=text;
+  chat.appendChild(r); chat.scrollTop=chat.scrollHeight;
+  await log("sia", text, step);
+}
+
+// ===== LOG TO SUPABASE =====
+async function log(role,message,step="reply"){
+  try{
+    await fetch(SUPER_API,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        mode:"log",
+        session_id:session,
+        role,
+        message,
+        step
+      })
+    });
+  }catch(e){
+    console.warn("log failed",e);
+  }
+}
+
+// ===== GEMINI CALL =====
+async function askGemini(text){
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_KEY}`,
+    {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({contents:[{parts:[{text}]}]})
+    }
+  );
+
+  if(res.status===429) throw new Error("RATE_LIMIT");
+  if(!res.ok) throw new Error("API_ERROR");
+
+  const j = await res.json();
+  return j.candidates?.[0]?.content?.parts?.[0]?.text || "How can I help?";
+}
+
+// ===== SAVE FINAL SUBMISSION =====
+async function saveSubmission(message){
+  await fetch(SUPER_API,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      mode:"submission",
+      session_id:session,
+      message,
+      action
+    })
+  });
+}
+
+// ===== MAIN FLOW =====
+async function handle(){
+  const text=input.value.trim(); if(!text) return;
+  input.value=""; addUser(text);
+  await log("user",text);
+
+  // already in fallback mode → capture submission + close loop
+  if(fallback){
+    await saveSubmission(text);
+    await addSia(
+      "Thank you — your submission has been recorded and securely shared (anonymous by default).",
+      "submission"
+    );
+    fallback=false;
+    return;
+  }
+
+  // try AI first
+  try{
+    const reply = await askGemini(text);
+    await addSia(reply);
+
+    // lightweight intent flag
+    if(reply.toLowerCase().includes("feedback")) action="Submit Feedback";
+    if(reply.toLowerCase().includes("query")) action="Raise Query";
+
+  }catch(err){
+    // API / billing / rate-limit → fallback capture mode
+    await addSia(
+      "Network is busy — please type your feedback or query now and I’ll log it for the admin team.",
+      "fallback"
+    );
+    fallback=true;
+  }
+}
+
+// ===== EVENTS =====
+send.onclick=handle;
+input.onkeypress=e=>{if(e.key==="Enter")handle()};
+
+// ===== INTRO =====
+(async()=>{
+  await addSia("Hi — I’m SIA.","intro");
+  await addSia("Tell me what’s going on, or how I can help today.","intro");
+  box.classList.add("active");
+})();
+</script>
+
+</body>
+</html>

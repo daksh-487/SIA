@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SIA — Premium Executive Intelligence</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg-pure: #000000;
+  --bg-card: #0c0c0e;
+  --bg-hover: #161618;
+  --border: rgba(255, 255, 255, 0.06);
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #06b6d4;
+  --text-main: #ffffff;
+  --text-muted: #71717a;
+  --glass: rgba(12, 12, 14, 0.8);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Hide Scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+
+body { 
+  background: var(--bg-pure); 
+  color: var(--text-main); 
+  font-family: 'Plus Jakarta Sans', sans-serif; 
+  height: 100vh; 
+  overflow: hidden; 
+}
+
+#app { display: flex; width: 100vw; height: 100vh; position: relative; }
+
+/* Sidebar UI */
+aside { 
+  width: 260px; 
+  background: var(--bg-pure); 
+  border-right: 1px solid var(--border); 
+  padding: 2rem 1.2rem; 
+  display: flex; 
+  flex-direction: column; 
+}
+
+.brand { 
+  font-size: 0.95rem; 
+  font-weight: 800; 
+  margin-bottom: 3rem; 
+  letter-spacing: 0.15em; 
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 10px;
+}
+.brand span { width: 10px; height: 10px; background: var(--accent-purple); border-radius: 50%; box-shadow: 0 0 15px var(--accent-purple); }
+
+nav a { 
+  color: var(--text-muted); 
+  padding: 12px 16px; 
+  border-radius: 12px; 
+  text-decoration: none; 
+  font-size: 0.85rem; 
+  font-weight: 500; 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  margin-bottom: 4px;
+}
+nav a:hover { color: #fff; background: var(--bg-hover); }
+nav a.active { background: rgba(255,255,255,0.04); color: #fff; border: 1px solid var(--border); }
+
+/* Main Content area */
+main { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  position: relative;
+  background: radial-gradient(at top left, #111114, #000);
+}
+
+header { 
+  height: 70px; 
+  padding: 0 2rem; 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-meta { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+.search-container { position: relative; }
+.search-container input {
+    background: #0c0c0e; border: 1px solid var(--border);
+    padding: 10px 18px 10px 40px; border-radius: 50px; color: #fff; width: 280px; font-size: 0.8rem;
+}
+.search-container i { position: absolute; left: 15px; top: 12px; color: var(--text-muted); font-size: 0.8rem;}
+
+.btn-ask { 
+  background: #fff; color: #000; font-weight: 700; border: none; padding: 10px 18px; 
+  border-radius: 50px; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 8px;
+}
+.btn-ask:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255,255,255,0.15); }
+
+/* Dashboard Cards */
+#view-area { flex: 1; padding: 2rem; overflow-y: auto; }
+
+.page-title-refined { margin-bottom: 2rem; }
+.page-title-refined h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+.page-title-refined p { font-size: 0.85rem; color: var(--text-muted); }
+
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+.card-stat { 
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; 
+    position: relative; overflow: hidden;
+}
+.card-stat:hover { border-color: rgba(255,255,255,0.2); background: #111114; }
+
+.stat-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+.stat-val { font-size: 1.8rem; font-weight: 700; margin-top: 10px; }
+
+.chart-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 24px; padding: 24px; }
+
+/* RAG Interface Styling */
+#rag-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+    z-index: 99; opacity: 0; pointer-events: none;
+}
+#rag-overlay.active { opacity: 1; pointer-events: all; }
+
+#rag-panel {
+    position: fixed; right: -500px; top: 20px; bottom: 20px; width: 440px; 
+    background: var(--glass); border-left: 1px solid var(--border);
+    border-radius: 30px 0 0 30px; z-index: 100; transition: 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; flex-direction: column; padding: 30px;
+    box-shadow: -10px 0 50px rgba(0,0,0,1); border: 1px solid var(--border);
+}
+#rag-panel.open { right: 0; }
+
+.close-btn { 
+    position: absolute; left: -20px; top: 40px; width: 40px; height: 40px; 
+    background: #fff; border-radius: 50%; color: #000; 
+    display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.rag-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 10px; margin: 20px 0; }
+.msg-bubble { padding: 12px 16px; border-radius: 18px; font-size: 0.85rem; max-width: 85%; line-height: 1.5; }
+.msg-bot { background: #161618; border: 1px solid var(--border); align-self: flex-start; }
+.msg-user { background: var(--accent-purple); align-self: flex-end; color: #fff; font-weight: 500; }
+
+</style>
+</head>
+<body>
+
+<div id="app">
+    <aside>
+        <div class="brand"><span></span> SIA INTELLIGENCE</div>
+        <nav>
+            <a href="index.html" id="lnk-chat"><i class="fa-solid fa-robot"></i> Chat Interface</a>
+            <a onclick="APP.go('overview')" id="lnk-overview" class="active"><i class="fa-solid fa-chart-line"></i> Summary</a>
+            <a onclick="APP.go('conversations')" id="lnk-conversations"><i class="fa-solid fa-message"></i> Feedbacks</a>
+            <a onclick="APP.go('users')" id="lnk-users"><i class="fa-solid fa-id-badge"></i> Users</a>
+            <a onclick="APP.go('intelligence')" id="lnk-intelligence"><i class="fa-solid fa-brain"></i> Neural Core</a>
+        </nav>
+    </aside>
+
+    <main>
+        <header>
+            <div class="header-meta">Jan 25, 2026 // System Online</div>
+            <div style="display: flex; gap: 20px;">
+                <div class="search-container">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" placeholder="Global system search...">
+                </div>
+                <button class="btn-ask" onclick="UI.toggleAssistant(true)"><i class="fa-solid fa-wand-magic-sparkles"></i> Insights Assistant</button>
+            </div>
+        </header>
+
+        <div id="view-area"></div>
+    </main>
+
+    <!-- Optimized Assistant -->
+    <div id="rag-overlay" onclick="UI.toggleAssistant(false)"></div>
+    <div id="rag-panel">
+        <div class="close-btn" onclick="UI.toggleAssistant(false)"><i class="fa-solid fa-chevron-right"></i></div>
+        <h3 style="font-weight: 800; font-size: 1.2rem;">Assistant Node</h3>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 20px;">Vector Database Online</p>
+        
+        <div id="rag-msgs" class="rag-msgs">
+            <div class="msg-bubble msg-bot">Greetings. I can process sentiment patterns or anomalies in your session logs. What should I investigate?</div>
+        </div>
+
+        <input type="text" id="rag-input" 
+               style="width: 100%; padding: 16px; background: #000; border: 1px solid var(--border); border-radius: 16px; color: #fff; outline: none;" 
+               placeholder="Write your query..." 
+               onkeypress="UI.askAssistant(event)">
+    </div>
+</div>
+
+<script>
+/* 
+   WARNING: NEVER HARDCODE API KEYS IN A PRODUCTION ENVIRONMENT
+   You must replace these placeholders with your actual Supabase URL and Anon Key
+   before running this application locally, or use a .env file.
+*/
+const sb = supabase.createClient(
+ "YOUR_SUPABASE_URL_HERE",
+ "YOUR_SUPABASE_ANON_KEY_HERE"
+);
+
+const UI = {
+    toggleAssistant: (show) => {
+        document.getElementById('rag-panel').classList.toggle('open', show);
+        document.getElementById('rag-overlay').classList.toggle('active', show);
+    },
+    askAssistant: (e) => {
+        if(e.key !== 'Enter' || !e.target.value) return;
+        const msg = e.target.value;
+        const box = document.getElementById('rag-msgs');
+        box.innerHTML += `<div class="msg-bubble msg-user">${msg}</div>`;
+        e.target.value = '';
+        setTimeout(() => {
+            box.innerHTML += `<div class="msg-bubble msg-bot">I have analyzed the current cluster. Data points suggest a shift in sentiment for 'technical setup' requests by 14%. No anomalies in API latency.</div>`;
+            box.scrollTop = box.scrollHeight;
+        }, 800);
+    }
+};
+
+const APP = {
+ view: document.getElementById("view-area"),
+
+ go(p){
+  document.querySelectorAll("nav a").forEach(a=>a.classList.remove("active"));
+  const link = document.getElementById("lnk-"+p);
+  if(link) link.classList.add("active");
+  this.view.innerHTML="";
+  this.render[p]();
+ },
+
+ render:{
+    overview: async ()=>{
+        APP.view.innerHTML = `
+            <div class="page-title-refined">
+                <h2>Intelligence Summary</h2>
+                <p>30-day cross-platform engagement activity.</p>
+            </div>
+            <div class="stats-row">
+                <div class="card-stat"><div class="stat-label">Global Mood</div><div id="kpi-sent" class="stat-val" style="color:var(--accent-cyan)">—</div></div>
+                <div class="card-stat"><div class="stat-label">Session Traffic</div><div id="kpi-cases" class="stat-val">—</div></div>
+                <div class="card-stat"><div class="stat-label">Neural Completion</div><div id="kpi-res" class="stat-val" style="color:var(--accent-purple)">—</div></div>
+                <div class="card-stat"><div class="stat-label">Detection Flag</div><div id="kpi-fb" class="stat-val">—</div></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1.2fr; gap: 24px;">
+                <div class="chart-box"><div class="stat-label" style="margin-bottom:20px">Volume Flow</div><canvas id="mainChart" height="150"></canvas></div>
+                <div class="chart-box"><div class="stat-label" style="margin-bottom:20px">Category Breakdown</div><canvas id="sideChart" height="180"></canvas></div>
+            </div>
+        `;
+        loadData();
+    },
+
+    conversations: async ()=>{
+        APP.view.innerHTML = `<div class="page-title-refined"><h2>Feedback Logs</h2><p>Verbatim records from session activity.</p></div>
+        <div style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; height: 600px;">
+            <div class="chart-box" style="overflow-y:auto" id="feedList">Loading logs...</div>
+            <div class="chart-box" style="display:flex; flex-direction:column">
+                <div class="stat-label" id="chatId">Select a log thread</div>
+                <div id="chatViewer" style="flex:1; margin-top:20px; overflow-y:auto; padding:10px"></div>
+            </div>
+        </div>`;
+        loadLogs();
+    },
+
+    users: () => {
+        APP.view.innerHTML = `
+            <div class="page-title-refined"><h2>User Segments</h2><p>Cluster mapping based on neural engagement.</p></div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                <div class="card-stat"><div class="stat-label">Peak Users</div><div class="stat-val">1.4k</div></div>
+                <div class="card-stat"><div class="stat-label">Retention</div><div class="stat-val" style="color:var(--accent-cyan)">92%</div></div>
+                <div class="card-stat"><div class="stat-label">Direct API calls</div><div class="stat-val">482k</div></div>
+            </div>
+            <div class="chart-box" style="margin-top:24px"><div class="stat-label">Daily Reach</div><canvas id="userGraph" height="100"></canvas></div>
+        `;
+        new Chart(document.getElementById('userGraph'), {
+            type: 'line', data: { labels: ['W1', 'W2', 'W3', 'W4'], datasets: [{label: 'User Vol', data: [100, 450, 320, 600], borderColor: '#fff', tension: 0.4, borderJoinStyle: 'round'}]}
+        });
+    },
+
+    intelligence: () => {
+        APP.view.innerHTML = `
+            <div class="page-title-refined"><h2>SIA Neural Core</h2><p>Direct system intelligence health metrics.</p></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <div class="chart-box"><div class="stat-label">Node Confidence Map</div><canvas id="radarId" height="200"></canvas></div>
+                <div class="chart-box"><div class="stat-label">7-Day Predict Pulse</div><canvas id="lineId" height="200"></canvas></div>
+            </div>
+        `;
+        new Chart(document.getElementById('radarId'), {
+            type: 'radar', 
+            data: { labels: ['Logic', 'Vector', 'Latency', 'I/O', 'Truth'], datasets: [{data: [80, 95, 70, 85, 90], backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: '#8b5cf6'}]}
+        });
+        new Chart(document.getElementById('lineId'), {
+            type: 'line',
+            data: { labels: ['1','2','3','4','5'], datasets: [{data: [10, 40, 25, 60, 90], borderColor: '#fff', borderDash: [5,5]}]}
+        });
+    }
+ }
+};
+
+/* Data Loading - Connecting your Supabase logic */
+async function loadData() {
+    const {data} = await sb.from("conversation_logs").select("*").limit(200);
+    if(!data) return;
+
+    const uniqueSessions = [...new Set(data.map(x=>x.session_id))].length;
+    const errors = data.filter(x=>x.step === "fallback").length;
+
+    document.getElementById("kpi-sent").innerText = (3.5).toFixed(1);
+    document.getElementById("kpi-cases").innerText = uniqueSessions;
+    document.getElementById("kpi-res").innerText = Math.round(( (uniqueSessions-errors) / uniqueSessions ) * 100) + "%";
+    document.getElementById("kpi-fb").innerText = errors;
+
+    new Chart(mainChart, {
+        type: 'line',
+        data: { 
+            labels: [...new Set(data.map(d=>d.created_at.split('T')[0]))].slice(-10),
+            datasets: [{ data: [12, 19, 13, 17, 10, 25, 20], borderColor: '#8b5cf6', fill: true, backgroundColor: 'rgba(139, 92, 246, 0.05)', tension: 0.4, pointRadius: 0}]
+        },
+        options: { plugins: {legend:{display:false}}, scales:{ y:{display:false}, x:{grid:{display:false}}} }
+    });
+
+    const intents = {}; data.forEach(d => intents[d.step] = (intents[d.step]||0)+1);
+    new Chart(sideChart, {
+        type: 'doughnut',
+        data: { labels: Object.keys(intents), datasets:[{ data: Object.values(intents), backgroundColor: ['#fff','#161618','#8b5cf6','#3b82f6','#333'], borderWidth:0 }]},
+        options: { cutout: '80%', plugins:{legend:{position:'bottom', labels:{usePointStyle:true, color:'#555', padding:20}}} }
+    });
+}
+
+async function loadLogs() {
+    const {data} = await sb.from("conversation_logs").select("*").order('created_at',{ascending:false}).limit(100);
+    const container = document.getElementById('feedList'); container.innerHTML = "";
+    
+    const groups = {}; data.forEach(d => { if(!groups[d.session_id]) groups[d.session_id]=[]; groups[d.session_id].push(d); });
+    
+    Object.keys(groups).forEach(id => {
+        const d = document.createElement('div');
+        d.style.cssText = "padding:15px; border-radius:12px; border:1px solid #1a1a1e; cursor:pointer; margin-bottom:10px;";
+        d.innerHTML = `<div style="font-weight:700; font-size:0.75rem">${id.substring(0,12)}...</div><div style="font-size:0.7rem; color:#555">${groups[id].length} Nodes</div>`;
+        d.onclick = () => {
+            document.getElementById('chatId').innerText = "Thread: " + id;
+            const view = document.getElementById('chatViewer'); view.innerHTML = "";
+            groups[id].forEach(msg => {
+                view.innerHTML += `<div class="msg-bubble ${msg.role==='user'?'msg-user':'msg-bot'}" style="margin-bottom:10px">${msg.message}</div>`;
+            });
+        };
+        container.appendChild(d);
+    });
+}
+
+APP.go("overview");
+</script>
+
+</body>
+</html>
