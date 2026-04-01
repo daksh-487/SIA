@@ -1,10 +1,7 @@
 # SIA — Student Insight Assistant & Premium Executive Intelligence Dashboard
 
 ## Overview
-**SIA (Student Insight Assistant)** is a comprehensive two-part AI platform designed to aggregate, analyze, and visualize student interaction data. 
-
-2. **The Intelligence Dashboard (`dashboard.html`)**: An executive-level analytics view that processes the ingested data, presenting high-level insights such as global mood, session traffic, neural completion rates, and user retention.
-
+SIA is a student-support and analytics initiative designed to improve how student concerns, feedback, and academic queries are captured, structured, and reviewed. The system consists of a student-facing chatbot interface and an admin intelligence dashboard that enables analysis, routing, and insights.
 > **Note**: This repository contains the Frontend application. The Supabase backend and Edge Functions are currently mocked/in-progress for portfolio demonstration purposes.
 
 ---
