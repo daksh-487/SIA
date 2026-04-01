@@ -3,7 +3,6 @@
 ## Overview
 **SIA (Student Insight Assistant)** is a comprehensive two-part AI platform designed to aggregate, analyze, and visualize student interaction data. 
 
-1. **The SIA Chat Interface (`index.html`)**: A robust, modern chatbot interface where users can ask questions, provide feedback, and raise queries. It integrates directly with Google's Gemini Flash model to provide intelligent responses, while simultaneously logging conversation data for further analysis.
 2. **The Intelligence Dashboard (`dashboard.html`)**: An executive-level analytics view that processes the ingested data, presenting high-level insights such as global mood, session traffic, neural completion rates, and user retention.
 
 > **Note**: This repository contains the Frontend application. The Supabase backend and Edge Functions are currently mocked/in-progress for portfolio demonstration purposes.
